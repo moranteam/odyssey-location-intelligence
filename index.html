@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odyssey AI | Master Interactive Map</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 380px;
+            max-height: calc(100vh - 40px);
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 16px 16px 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .panel-header h1 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .panel-header p {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .panel-section h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+
+        .toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f5f5f7;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-item:hover {
+            background: #e8e8ed;
+        }
+
+        .toggle-item.active {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: 2px solid #0071e3;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .line-color {
+            width: 24px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        .toggle-switch {
+            width: 48px;
+            height: 28px;
+            background: #d1d1d6;
+            border-radius: 14px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: #34c759;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+        }
+
+        .traffic-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .traffic-btn {
+            padding: 10px;
+            border: 2px solid #e5e5e7;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .traffic-btn.active {
+            background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+            color: white;
+            border-color: #0071e3;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: #f5f5f7;
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0071e3;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #6e6e73;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .action-buttons {
+            display: grid;
+            gap: 10px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+            color: white;
+        }
+
+        .action-btn.secondary {
+            background: #34c759;
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 320px;
+        }
+
+        .legend h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+
+        .legend-section {
+            margin-bottom: 16px;
+        }
+
+        .legend-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #86868b;
+            margin-bottom: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-line {
+            width: 32px;
+            height: 4px;
+            border-radius: 2px;
+            margin-right: 10px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f5f5f7;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d1d6;
+            border-radius: 4px;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(52, 199, 89, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <div class="panel-header">
+            <h1>🗺️ Odyssey AI Location Intelligence</h1>
+            <p>Interactive Bay Area transit & cost analysis</p>
+        </div>
+
+        <!-- Traffic Time -->
+        <div class="panel-section">
+            <h3>🚦 Traffic Conditions</h3>
+            <div class="traffic-selector">
+                <div class="traffic-btn" data-time="rush-am">8 AM<br>Rush</div>
+                <div class="traffic-btn active" data-time="offpeak">12 PM<br>Off-Peak</div>
+                <div class="traffic-btn" data-time="rush-pm">6 PM<br>Rush</div>
+            </div>
+        </div>
+
+        <!-- Transit Lines -->
+        <div class="panel-section">
+            <h3>🚇 Transit Routes</h3>
+            <div class="toggle-group">
+                <div class="toggle-item active" data-layer="caltrain">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #E31837; width: 32px;"></div>
+                        <span>Caltrain (SF → SJ)</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item active" data-layer="bart-red">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #FF0000;"></div>
+                        <span>BART Red Line</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item active" data-layer="bart-yellow">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #FFE800;"></div>
+                        <span>BART Yellow Line</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item active" data-layer="bart-green">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #00A34E;"></div>
+                        <span>BART Green Line</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item active" data-layer="bart-blue">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #0099CC;"></div>
+                        <span>BART Blue Line</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item active" data-layer="bart-orange">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #FF9933;"></div>
+                        <span>BART Orange Line</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item active" data-layer="vta">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #00A651;"></div>
+                        <span>VTA Light Rail</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item active" data-layer="dumbarton">
+                    <div class="toggle-label">
+                        <div class="line-color" style="background: #9B59B6;"></div>
+                        <span>Dumbarton Express</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Overlays -->
+        <div class="panel-section">
+            <h3>📊 Data Layers</h3>
+            <div class="toggle-group">
+                <div class="toggle-item active" data-layer="heatmap">
+                    <div class="toggle-label">
+                        <span>🔥 AI Talent Heat Map</span>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                <div class="toggle-item" data-layer="parking">
+                    <div class="toggle-label">
+                        <span>🅿️ Parking Locations</span>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+                <div class="toggle-item" data-layer="companies">
+                    <div class="toggle-label">
+                        <span>🏢 Tech Companies</span>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="panel-section">
+            <h3>📈 Live Analytics</h3>
+            <div class="quick-stats">
+                <div class="stat-card">
+                    <span class="stat-value">95k+</span>
+                    <span class="stat-label">AI Talent Pool</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">35 min</span>
+                    <span class="stat-label">SF Express</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">$3,840</span>
+                    <span class="stat-label">Annual Savings</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">850</span>
+                    <span class="stat-label">Parking Spaces</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="panel-section">
+            <div class="action-buttons">
+                <button class="action-btn primary" onclick="openCalculator()">💰 Cost Calculator</button>
+                <button class="action-btn primary" onclick="openProfiler()">👤 Profile Analyzer</button>
+                <button class="action-btn secondary" onclick="exportData()">📊 Export Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <h4>🗺️ Map Legend</h4>
+        
+        <div class="legend-section">
+            <div class="legend-title">Transit Lines</div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #E31837;"></div>
+                <span>Caltrain</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #FF0000;"></div>
+                <span>BART Red</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #FFE800;"></div>
+                <span>BART Yellow</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #00A34E;"></div>
+                <span>BART Green</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #0099CC;"></div>
+                <span>BART Blue</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #FF9933;"></div>
+                <span>BART Orange</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #00A651;"></div>
+                <span>VTA</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #9B59B6;"></div>
+                <span>Dumbarton</span>
+            </div>
+        </div>
+
+        <div class="legend-section">
+            <div class="legend-title">Target Locations</div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #34c759;"></div>
+                <span>Redwood City</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #0071e3;"></div>
+                <span>Palo Alto</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: #5856d6;"></div>
+                <span>Menlo Park</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([37.55, -122.15], 10);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap © CARTO',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Data
+        const CALTRAIN_STATIONS = [
+            { name: 'SF 4th & King', lat: 37.7765, lng: -122.3944 },
+            { name: 'SF 22nd St', lat: 37.7570, lng: -122.3924 },
+            { name: 'Bayshore', lat: 37.7090, lng: -122.4012 },
+            { name: 'South SF', lat: 37.6567, lng: -122.4051 },
+            { name: 'San Bruno', lat: 37.6307, lng: -122.4112 },
+            { name: 'Millbrae', lat: 37.5997, lng: -122.3869 },
+            { name: 'San Mateo', lat: 37.5679, lng: -122.3237 },
+            { name: 'Redwood City', lat: 37.4863, lng: -122.2325 },
+            { name: 'Menlo Park', lat: 37.4544, lng: -122.1820 },
+            { name: 'Palo Alto', lat: 37.4430, lng: -122.1649 },
+            { name: 'Mountain View', lat: 37.3943, lng: -122.0764 },
+            { name: 'Sunnyvale', lat: 37.3780, lng: -122.0310 },
+            { name: 'Santa Clara', lat: 37.3529, lng: -121.9367 },
+            { name: 'San Jose Diridon', lat: 37.3297, lng: -121.9026 }
+        ];
+
+        const BART_RED = [
+            [37.9370, -122.3534], [37.9030, -122.3467], [37.8519, -122.2769],
+            [37.8286, -122.2665], [37.8054, -122.2719], [37.7929, -122.3972],
+            [37.7844, -122.4078], [37.7765, -122.4192], [37.7218, -122.4474],
+            [37.6328, -122.4143], [37.5997, -122.3869]
+        ];
+
+        const BART_YELLOW = [
+            [37.9953, -121.7806], [37.9731, -121.9330], [37.9257, -122.0571],
+            [37.8286, -122.2665], [37.8054, -122.2719], [37.7929, -122.3972],
+            [37.7844, -122.4078], [37.7218, -122.4474], [37.6636, -122.4666],
+            [37.6158, -122.3925]
+        ];
+
+        const BART_GREEN = [
+            [37.3691, -121.8743], [37.3709, -121.9290], [37.5294, -121.9388],
+            [37.5575, -121.9765], [37.7542, -122.1973], [37.8054, -122.2719],
+            [37.7929, -122.3972], [37.7070, -122.4699]
+        ];
+
+        const BART_BLUE = [
+            [37.7016, -121.9000], [37.6996, -121.9280], [37.6999, -122.0666],
+            [37.7542, -122.1973], [37.8054, -122.2719], [37.7929, -122.3972],
+            [37.7070, -122.4699]
+        ];
+
+        const BART_ORANGE = [
+            [37.9370, -122.3534], [37.8519, -122.2769], [37.8286, -122.2665],
+            [37.7542, -122.1973], [37.5575, -121.9765], [37.3691, -121.8743]
+        ];
+
+        const VTA_STATIONS = [
+            [37.3943, -122.0764], [37.3780, -122.0310], [37.3529, -121.9367],
+            [37.3297, -121.9026], [37.3006, -121.8863], [37.2487, -121.8308]
+        ];
+
+        const DUMBARTON_ROUTE = [
+            [37.5906, -122.0174], [37.5297, -122.0556],
+            [37.5082, -122.1140], [37.4544, -122.1820]
+        ];
+
+        const PARKING_LOCATIONS = [
+            { name: 'Marshall Square', lat: 37.4856, lng: -122.2279, rate: 125 },
+            { name: 'Downtown RWC', lat: 37.4871, lng: -122.2310, rate: 125 },
+            { name: 'High/Alma South PA', lat: 37.4445, lng: -122.1598, rate: 275 },
+            { name: 'Civic Center PA', lat: 37.4419, lng: -122.1640, rate: 275 },
+            { name: 'Downtown Menlo', lat: 37.4532, lng: -122.1826, rate: 180 },
+            { name: 'SoMa Garage SF', lat: 37.7815, lng: -122.4054, rate: 375 }
+        ];
+
+        const TECH_COMPANIES = [
+            { name: 'Box HQ', lat: 37.4871, lng: -122.2272 },
+            { name: 'Electronic Arts', lat: 37.4852, lng: -122.2360 },
+            { name: 'Oracle RWC', lat: 37.5294, lng: -122.2651 },
+            { name: 'Tesla HQ', lat: 37.3947, lng: -122.1498 },
+            { name: 'Meta HQ', lat: 37.4848, lng: -122.1483 },
+            { name: 'Google HQ', lat: 37.4220, lng: -122.0841 },
+            { name: 'Apple Park', lat: 37.3349, lng: -122.0090 }
+        ];
+
+        // Layers
+        const layers = {};
+
+        // Caltrain
+        layers.caltrain = L.polyline(CALTRAIN_STATIONS.map(s => [s.lat, s.lng]), {
+            color: '#E31837', weight: 5, opacity: 0.8, dashArray: '10, 10'
+        }).addTo(map);
+
+        CALTRAIN_STATIONS.forEach(s => {
+            L.circleMarker([s.lat, s.lng], {
+                radius: 6, fillColor: '#E31837', color: 'white', weight: 2, fillOpacity: 0.8
+            }).bindPopup(`<b>${s.name}</b><br>Caltrain`).addTo(map);
+        });
+
+        // BART Lines
+        layers['bart-red'] = L.polyline(BART_RED, { color: '#FF0000', weight: 4, opacity: 0.8 }).addTo(map);
+        layers['bart-yellow'] = L.polyline(BART_YELLOW, { color: '#FFE800', weight: 4, opacity: 0.8 }).addTo(map);
+        layers['bart-green'] = L.polyline(BART_GREEN, { color: '#00A34E', weight: 4, opacity: 0.8 }).addTo(map);
+        layers['bart-blue'] = L.polyline(BART_BLUE, { color: '#0099CC', weight: 4, opacity: 0.8 }).addTo(map);
+        layers['bart-orange'] = L.polyline(BART_ORANGE, { color: '#FF9933', weight: 4, opacity: 0.8 }).addTo(map);
+        layers.vta = L.polyline(VTA_STATIONS, { color: '#00A651', weight: 4, opacity: 0.8 }).addTo(map);
+        layers.dumbarton = L.polyline(DUMBARTON_ROUTE, { color: '#9B59B6', weight: 4, opacity: 0.8, dashArray: '8, 8' }).addTo(map);
+
+        // Targets
+        const targets = [
+            { name: 'Redwood City', lat: 37.4863, lng: -122.2325, color: '#34c759', parking: 125 },
+            { name: 'Palo Alto', lat: 37.4430, lng: -122.1649, color: '#0071e3', parking: 275 },
+            { name: 'Menlo Park', lat: 37.4544, lng: -122.1820, color: '#5856d6', parking: 180 }
+        ];
+
+        targets.forEach(t => {
+            const icon = L.divIcon({
+                html: `<div style="width:24px;height:24px;background:${t.color};border:4px solid white;border-radius:50%;box-shadow:0 0 12px rgba(0,0,0,0.3);animation:pulse 2s infinite;"></div>`,
+                iconSize: [24, 24]
+            });
+            L.marker([t.lat, t.lng], { icon }).bindPopup(`<b>${t.name}</b><br>Parking: $${t.parking}/mo`).addTo(map);
+        });
+
+        // Parking layer
+        layers.parking = L.layerGroup();
+        PARKING_LOCATIONS.forEach(p => {
+            const color = p.rate <= 150 ? '#34c759' : p.rate <= 200 ? '#ff9500' : '#ff3b30';
+            const icon = L.divIcon({
+                html: `<div style="background:${color};width:20px;height:20px;border-radius:4px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:12px;">P</div>`,
+                iconSize: [20, 20]
+            });
+            L.marker([p.lat, p.lng], { icon }).bindPopup(`<b>${p.name}</b><br>$${p.rate}/mo`).addTo(layers.parking);
+        });
+
+        // Companies layer
+        layers.companies = L.layerGroup();
+        TECH_COMPANIES.forEach(c => {
+            const icon = L.divIcon({
+                html: `<div style="background:#1d1d1f;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [16, 16]
+            });
+            L.marker([c.lat, c.lng], { icon }).bindPopup(`<b>${c.name}</b>`).addTo(layers.companies);
+        });
+
+        // Heatmap
+        layers.heatmap = L.heatLayer([
+            [37.7765, -122.3944, 1.0], [37.7844, -122.4078, 0.95],
+            [37.4863, -122.2325, 0.7], [37.4430, -122.1649, 0.8],
+            [37.4544, -122.1820, 0.6], [37.3943, -122.0764, 0.75],
+            [37.3780, -122.0310, 0.6], [37.3297, -121.9026, 0.85],
+            [37.8054, -122.2719, 0.5], [37.5575, -121.9765, 0.4]
+        ], {
+            radius: 40, blur: 30, maxZoom: 13,
+            gradient: { 0.0: '#00ff00', 0.3: '#ffff00', 0.6: '#ffa500', 1.0: '#ff0000' }
+        }).addTo(map);
+
+        // Toggle controls
+        document.querySelectorAll('.toggle-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const layer = this.dataset.layer;
+                const toggle = this.querySelector('.toggle-switch');
+                
+                if (layers[layer]) {
+                    if (map.hasLayer(layers[layer])) {
+                        map.removeLayer(layers[layer]);
+                        toggle.classList.remove('active');
+                        this.classList.remove('active');
+                    } else {
+                        map.addLayer(layers[layer]);
+                        toggle.classList.add('active');
+                        this.classList.add('active');
+                    }
+                }
+            });
+        });
+
+        // Traffic buttons
+        document.querySelectorAll('.traffic-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.traffic-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Action functions
+        function openCalculator() {
+            alert('Cost Calculator would open here\n\nIn production: Opens Odyssey_AI_Complete_Commute_Analysis.html');
+        }
+
+        function openProfiler() {
+            alert('Profile Analyzer would open here\n\nIn production: Opens Odyssey_AI_Employee_Profile_Analyzer.html');
+        }
+
+        function exportData() {
+            const csv = [
+                ['Odyssey AI Map Data'],
+                ['Generated: ' + new Date().toLocaleString()],
+                [''],
+                ['Target Locations'],
+                ['Redwood City', '$125/mo', '37.4863,-122.2325'],
+                ['Palo Alto', '$275/mo', '37.4430,-122.1649'],
+                ['Menlo Park', '$180/mo', '37.4544,-122.1820']
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'odyssey-map-data.csv';
+            a.click();
+        }
+
+        // Pulse animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7); }
+                70% { box-shadow: 0 0 0 10px rgba(52, 199, 89, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
