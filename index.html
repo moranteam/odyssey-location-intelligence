@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odyssey AI | Master Interactive Map v2.0</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* MAP CONTAINER */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* CONTROL PANEL */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 400px;
+            max-height: calc(100vh - 40px);
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 16px 16px 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .panel-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .panel-header p {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* TRANSIT TOGGLES */
+        .transit-group {
+            margin-bottom: 16px;
+        }
+
+        .transit-group-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #86868b;
+            margin-bottom: 8px;
+        }
+
+        .toggle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f5f5f7;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-item:hover {
+            background: #e8e8ed;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .toggle-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #c6c6c8;
+            border-radius: 12px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #34c759;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        /* ANALYTICS STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #d2d2d7;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0071e3;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #86868b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* COMMUTE TABLE */
+        .commute-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .commute-table thead {
+            background: #f5f5f7;
+        }
+
+        .commute-table th {
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #86868b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .commute-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f5f5f7;
+        }
+
+        .commute-table tbody tr:hover {
+            background: #f5f5f7;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-express {
+            background: linear-gradient(135deg, #34c759, #30d158);
+            color: white;
+        }
+
+        .badge-rail {
+            background: linear-gradient(135deg, #007aff, #0071e3);
+            color: white;
+        }
+
+        .badge-bart {
+            background: linear-gradient(135deg, #ff9500, #ffb340);
+            color: white;
+        }
+
+        .badge-bus {
+            background: linear-gradient(135deg, #af52de, #bf5af2);
+            color: white;
+        }
+
+        .cost-badge {
+            background: linear-gradient(135deg, #34c759, #30d158);
+            color: white;
+        }
+
+        .talent-badge {
+            background: linear-gradient(135deg, #c026d3, #e879f9);
+            color: white;
+        }
+
+        /* ACTION BUTTONS */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+            color: white;
+        }
+
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 113, 227, 0.3);
+        }
+
+        .button-secondary {
+            background: white;
+            color: #0071e3;
+            border: 2px solid #0071e3;
+        }
+
+        .button-secondary:hover {
+            background: #0071e3;
+            color: white;
+        }
+
+        .button-export {
+            background: linear-gradient(135deg, #34c759 0%, #30d158 100%);
+            color: white;
+        }
+
+        .button-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(52, 199, 89, 0.3);
+        }
+
+        /* LEGEND */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .legend-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #1d1d1f;
+        }
+
+        .legend-section {
+            margin-bottom: 12px;
+        }
+
+        .legend-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .legend-line {
+            width: 24px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .divider {
+            height: 1px;
+            background: #e5e5e7;
+            margin: 12px 0;
+        }
+
+        .section-subtitle {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .control-panel::-webkit-scrollbar-track {
+            background: #f5f5f7;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb {
+            background: #c6c6c8;
+            border-radius: 3px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- MAP -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- LEGEND -->
+            <div class="legend">
+                <div class="legend-title">📍 Map Legend</div>
+                
+                <div class="legend-section">
+                    <div class="legend-section-title">Transit Lines</div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #e31837;"></div>
+                        <span>Caltrain</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #ed1c24; border: 2px dashed rgba(237,28,36,0.5);"></div>
+                        <span>BART Red</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #ffcd26; border: 2px dashed rgba(255,205,38,0.5);"></div>
+                        <span>BART Yellow</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #00a84d; border: 2px dashed rgba(0,168,77,0.5);"></div>
+                        <span>BART Green</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #00adef; border: 2px dashed rgba(0,173,239,0.5);"></div>
+                        <span>BART Blue</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #ff9933; border: 2px dashed rgba(255,153,51,0.5);"></div>
+                        <span>BART Orange</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #0066cc;"></div>
+                        <span>VTA Light Rail</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #af52de; border: 2px dashed rgba(175,82,222,0.5);"></div>
+                        <span>Dumbarton Express</span>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="legend-section">
+                    <div class="legend-section-title">Target Locations</div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: #34c759;"></div>
+                        <span>Redwood City</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: #0071e3;"></div>
+                        <span>Palo Alto</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: #5856d6;"></div>
+                        <span>Menlo Park</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTROL PANEL -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h1>🎯 Odyssey AI Location Intelligence</h1>
+                <p>Bay Area Transit & Talent Analysis</p>
+            </div>
+
+            <!-- LIVE ANALYTICS -->
+            <div class="panel-section">
+                <div class="section-title">📊 Live Analytics</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">95k+</div>
+                        <div class="stat-label">AI Talent Pool</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">35 min</div>
+                        <div class="stat-label">SF Express</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">$3,840</div>
+                        <div class="stat-label">Avg Annual Savings</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">850</div>
+                        <div class="stat-label">Parking Spaces</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TRANSIT ROUTES -->
+            <div class="panel-section">
+                <div class="section-title">🚆 Transit Routes</div>
+                
+                <div class="transit-group">
+                    <div class="transit-group-title">Peninsula Rail</div>
+                    <div class="toggle-item" data-layer="caltrain">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #e31837;"></div>
+                            Caltrain
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                </div>
+
+                <div class="transit-group">
+                    <div class="transit-group-title">BART Lines</div>
+                    <div class="toggle-item" data-layer="bart-red">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #ed1c24;"></div>
+                            Red Line
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                    <div class="toggle-item" data-layer="bart-yellow">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #ffcd26;"></div>
+                            Yellow Line
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                    <div class="toggle-item" data-layer="bart-green">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #00a84d;"></div>
+                            Green Line
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                    <div class="toggle-item" data-layer="bart-blue">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #00adef;"></div>
+                            Blue Line
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                    <div class="toggle-item" data-layer="bart-orange">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #ff9933;"></div>
+                            Orange Line
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                </div>
+
+                <div class="transit-group">
+                    <div class="transit-group-title">Other Transit</div>
+                    <div class="toggle-item" data-layer="vta">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #0066cc;"></div>
+                            VTA Light Rail
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                    <div class="toggle-item" data-layer="dumbarton">
+                        <div class="toggle-label">
+                            <div class="toggle-color" style="background: #af52de;"></div>
+                            Dumbarton Express
+                        </div>
+                        <div class="toggle-switch active"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA LAYERS -->
+            <div class="panel-section">
+                <div class="section-title">🎨 Data Layers</div>
+                
+                <div class="toggle-item" data-layer="heatmap">
+                    <div class="toggle-label">
+                        AI Talent Heat Map
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                
+                <div class="toggle-item" data-layer="parking">
+                    <div class="toggle-label">
+                        Parking Locations
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+                
+                <div class="toggle-item" data-layer="companies">
+                    <div class="toggle-label">
+                        Tech Companies
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+            </div>
+
+            <!-- COMMUTE TIMES: PENINSULA -->
+            <div class="panel-section">
+                <div class="section-title">⏱️ Peninsula Commutes (Caltrain)</div>
+                
+                <table class="commute-table">
+                    <thead>
+                        <tr>
+                            <th>Origin</th>
+                            <th>To RWC</th>
+                            <th>To PA</th>
+                            <th>$/mo</th>
+                            <th>Talent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>SF 4th & King</strong></td>
+                            <td><span class="badge badge-express">35m</span></td>
+                            <td><span class="badge badge-rail">49m</span></td>
+                            <td><span class="badge cost-badge">$273</span></td>
+                            <td><span class="badge talent-badge" style="background: #c026d3;">32k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>SF 22nd St</strong></td>
+                            <td><span class="badge badge-express">33m</span></td>
+                            <td><span class="badge badge-rail">47m</span></td>
+                            <td><span class="badge cost-badge">$273</span></td>
+                            <td><span class="badge talent-badge" style="background: #a855f7;">8k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Millbrae</strong></td>
+                            <td><span class="badge badge-express">23m</span></td>
+                            <td><span class="badge badge-rail">37m</span></td>
+                            <td><span class="badge cost-badge">$208</span></td>
+                            <td><span class="badge talent-badge" style="background: #9333ea;">5k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>San Mateo</strong></td>
+                            <td><span class="badge badge-express">16m</span></td>
+                            <td><span class="badge badge-rail">30m</span></td>
+                            <td><span class="badge cost-badge">$163</span></td>
+                            <td><span class="badge talent-badge" style="background: #9333ea;">4k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Mountain View</strong></td>
+                            <td><span class="badge badge-rail">19m</span></td>
+                            <td><span class="badge badge-rail">10m</span></td>
+                            <td><span class="badge cost-badge">$118</span></td>
+                            <td><span class="badge talent-badge" style="background: #c026d3;">15k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sunnyvale</strong></td>
+                            <td><span class="badge badge-rail">23m</span></td>
+                            <td><span class="badge badge-rail">14m</span></td>
+                            <td><span class="badge cost-badge">$118</span></td>
+                            <td><span class="badge talent-badge" style="background: #a855f7;">12k</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- COMMUTE TIMES: EAST BAY -->
+            <div class="panel-section">
+                <div class="section-title">⏱️ East Bay Commutes (BART/Bus)</div>
+                
+                <table class="commute-table">
+                    <thead>
+                        <tr>
+                            <th>Origin</th>
+                            <th>Route</th>
+                            <th>Time</th>
+                            <th>$/mo</th>
+                            <th>Talent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Oakland DT</strong></td>
+                            <td><span class="badge badge-bart">BART</span> + <span class="badge badge-rail">Rail</span></td>
+                            <td>95m</td>
+                            <td><span class="badge cost-badge">$343</span></td>
+                            <td><span class="badge talent-badge" style="background: #c026d3;">18k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fremont</strong></td>
+                            <td><span class="badge badge-bus">Dumbarton</span></td>
+                            <td>75m</td>
+                            <td><span class="badge cost-badge">$298</span></td>
+                            <td><span class="badge talent-badge" style="background: #9333ea;">6k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Union City</strong></td>
+                            <td><span class="badge badge-bus">Dumbarton</span></td>
+                            <td>80m</td>
+                            <td><span class="badge cost-badge">$298</span></td>
+                            <td><span class="badge talent-badge" style="background: #9333ea;">4k</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- COMMUTE TIMES: SOUTH BAY -->
+            <div class="panel-section">
+                <div class="section-title">⏱️ South Bay Commutes (Caltrain+VTA)</div>
+                
+                <table class="commute-table">
+                    <thead>
+                        <tr>
+                            <th>Origin</th>
+                            <th>Route</th>
+                            <th>Time</th>
+                            <th>$/mo</th>
+                            <th>Talent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>San Jose Diridon</strong></td>
+                            <td><span class="badge badge-rail">Caltrain</span></td>
+                            <td>26m</td>
+                            <td><span class="badge cost-badge">$163</span></td>
+                            <td><span class="badge talent-badge" style="background: #c026d3;">24k</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Santa Clara</strong></td>
+                            <td><span class="badge badge-rail">Caltrain</span></td>
+                            <td>20m</td>
+                            <td><span class="badge cost-badge">$118</span></td>
+                            <td><span class="badge talent-badge" style="background: #a855f7;">8k</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="panel-section">
+                <div class="section-title">🛠️ Analysis Tools</div>
+                <div class="action-buttons">
+                    <button class="action-button button-primary" onclick="openCalculator()">
+                        💰 Cost Calculator
+                    </button>
+                    <button class="action-button button-secondary" onclick="openProfiler()">
+                        👤 Profile Analyzer
+                    </button>
+                    <button class="action-button button-export" onclick="exportData()">
+                        📥 Export Data (CSV)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <script>
+        console.log('🚀 Initializing Odyssey AI Map v2.0...');
+        
+        // Initialize map
+        const map = L.map('map').setView([37.55, -122.15], 10);
+        console.log('✅ Map initialized');
+
+        // Add CartoDB Positron tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap © CARTO',
+            maxZoom: 19
+        }).addTo(map);
+        console.log('✅ Base tiles loaded');
+
+        // Layer storage
+        const layers = {
+            caltrain: L.layerGroup(),
+            'bart-red': L.layerGroup(),
+            'bart-yellow': L.layerGroup(),
+            'bart-green': L.layerGroup(),
+            'bart-blue': L.layerGroup(),
+            'bart-orange': L.layerGroup(),
+            vta: L.layerGroup(),
+            dumbarton: L.layerGroup(),
+            heatmap: null,
+            parking: L.layerGroup(),
+            companies: L.layerGroup()
+        };
+
+        // Add all transit layer groups to map initially
+        Object.keys(layers).forEach(key => {
+            if (key !== 'heatmap' && key !== 'parking' && key !== 'companies') {
+                layers[key].addTo(map);
+            }
+        });
+        console.log('✅ Layer groups initialized');
+
+        // Caltrain stations
+        const caltrainStations = [
+            [37.7765, -122.3944], // SF 4th & King
+            [37.7577, -122.4117], // 22nd St
+            [37.6036, -122.3869], // Millbrae
+            [37.5688, -122.3247], // Burlingame
+            [37.5299, -122.2960], // San Mateo
+            [37.4863, -122.2325], // Redwood City
+            [37.4544, -122.1820], // Menlo Park
+            [37.4430, -122.1649], // Palo Alto
+            [37.3943, -122.0764], // Mountain View
+            [37.3780, -122.0310], // Sunnyvale
+            [37.3525, -121.9939], // Santa Clara
+            [37.3297, -121.9026]  // San Jose Diridon
+        ];
+
+        // Draw Caltrain line
+        const caltrainPolyline = L.polyline(caltrainStations, {
+            color: '#e31837',
+            weight: 4,
+            opacity: 0.7
+        });
+        caltrainPolyline.addTo(layers.caltrain);
+
+        // Add Caltrain station markers
+        caltrainStations.forEach(coord => {
+            L.circleMarker(coord, {
+                radius: 5,
+                fillColor: '#e31837',
+                color: 'white',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(layers.caltrain);
+        });
+        console.log('✅ Caltrain line added (14 stations)');
+
+        // BART Red Line
+        const bartRedLine = [
+            [37.9373, -122.3534], // Richmond
+            [37.8732, -122.2670], // MacArthur
+            [37.8054, -122.2719], // 19th St Oakland
+            [37.7949, -122.2654], // 12th St Oakland
+            [37.7929, -122.2727], // Lake Merritt
+            [37.7747, -122.4184], // Embarcadero
+            [37.7894, -122.4011], // Montgomery
+            [37.7844, -122.4078], // Powell
+            [37.7796, -122.4141], // Civic Center
+            [37.7648, -122.4194], // 16th St Mission
+            [37.7521, -122.4181], // 24th St Mission
+            [37.7329, -122.4012], // Glen Park
+            [37.7216, -122.4476], // Balboa Park
+            [37.6871, -122.4695], // Daly City
+            [37.6699, -122.4678], // Colma
+            [37.6528, -122.4690], // South SF
+            [37.6366, -122.4160], // San Bruno
+            [37.6036, -122.3869]  // Millbrae
+        ];
+        L.polyline(bartRedLine, {
+            color: '#ed1c24',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 5'
+        }).addTo(layers['bart-red']);
+        console.log('✅ BART Red Line added');
+
+        // BART Yellow Line
+        const bartYellowLine = [
+            [37.9952, -121.7807], // Antioch
+            [37.9732, -121.9000], // Pittsburg Center
+            [37.9459, -121.9407], // Pittsburg/Bay Point
+            [37.9287, -122.0170], // North Concord
+            [37.9259, -122.0313], // Concord
+            [37.9076, -122.0565], // Pleasant Hill
+            [37.8732, -122.2670], // MacArthur
+            [37.8054, -122.2719], // 19th St Oakland
+            [37.7747, -122.4184], // Embarcadero
+            [37.6036, -122.3869]  // Millbrae
+        ];
+        L.polyline(bartYellowLine, {
+            color: '#ffcd26',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 5'
+        }).addTo(layers['bart-yellow']);
+        console.log('✅ BART Yellow Line added');
+
+        // BART Green Line
+        const bartGreenLine = [
+            [37.3690, -121.8753], // Berryessa
+            [37.4097, -121.9389], // Milpitas
+            [37.5575, -121.9765], // Fremont
+            [37.5994, -122.0172], // Union City
+            [37.6970, -122.1213], // Bay Fair
+            [37.7216, -122.4476]  // Balboa Park
+        ];
+        L.polyline(bartGreenLine, {
+            color: '#00a84d',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 5'
+        }).addTo(layers['bart-green']);
+        console.log('✅ BART Green Line added');
+
+        // BART Blue Line
+        const bartBlueLine = [
+            [37.7216, -122.4476], // Balboa Park
+            [37.7136, -122.4425], // Glen Park
+            [37.7329, -122.4012], // Glen Park
+            [37.6970, -122.1213], // Bay Fair
+            [37.6844, -122.0997], // Castro Valley
+            [37.6525, -122.0567], // West Dublin
+            [37.7017, -121.9001]  // Dublin/Pleasanton
+        ];
+        L.polyline(bartBlueLine, {
+            color: '#00adef',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 5'
+        }).addTo(layers['bart-blue']);
+        console.log('✅ BART Blue Line added');
+
+        // BART Orange Line
+        const bartOrangeLine = [
+            [37.9373, -122.3534], // Richmond
+            [37.8732, -122.2670], // MacArthur
+            [37.8054, -122.2719], // 19th St Oakland
+            [37.6970, -122.1213], // Bay Fair
+            [37.5575, -121.9765], // Fremont
+            [37.3690, -121.8753]  // Berryessa
+        ];
+        L.polyline(bartOrangeLine, {
+            color: '#ff9933',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 5'
+        }).addTo(layers['bart-orange']);
+        console.log('✅ BART Orange Line added');
+
+        // VTA Light Rail
+        const vtaStations = [
+            [37.3525, -121.9939], // Santa Clara
+            [37.3780, -122.0310], // Sunnyvale
+            [37.3943, -122.0764]  // Mountain View
+        ];
+        L.polyline(vtaStations, {
+            color: '#0066cc',
+            weight: 4,
+            opacity: 0.7
+        }).addTo(layers.vta);
+        console.log('✅ VTA Light Rail added');
+
+        // Dumbarton Express
+        const dumbartonRoute = [
+            [37.5994, -122.0172], // Union City BART
+            [37.5575, -121.9765], // Fremont BART
+            [37.5046, -122.0825], // Dumbarton Bridge
+            [37.4544, -122.1820]  // Menlo Park
+        ];
+        L.polyline(dumbartonRoute, {
+            color: '#af52de',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '5, 5'
+        }).addTo(layers.dumbarton);
+        console.log('✅ Dumbarton Express added');
+
+        // Target location markers
+        const targets = [
+            { name: 'Redwood City', coords: [37.4863, -122.2325], color: '#34c759' },
+            { name: 'Palo Alto', coords: [37.4430, -122.1649], color: '#0071e3' },
+            { name: 'Menlo Park', coords: [37.4544, -122.1820], color: '#5856d6' }
+        ];
+
+        targets.forEach(target => {
+            const icon = L.divIcon({
+                className: 'pulse-marker',
+                html: `<div style="background: ${target.color}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>`,
+                iconSize: [20, 20]
+            });
+            L.marker(target.coords, { icon })
+                .bindPopup(`<b>${target.name}</b><br>Target Location`)
+                .addTo(map);
+        });
+        console.log('✅ Target markers added');
+
+        // Heat map data
+        const heatData = [
+            [37.7765, -122.3944, 1.0],  // SF SoMa
+            [37.7844, -122.4078, 0.9],  // SF Financial
+            [37.4863, -122.2325, 0.7],  // Redwood City
+            [37.4430, -122.1649, 0.8],  // Palo Alto
+            [37.4544, -122.1820, 0.6],  // Menlo Park
+            [37.3943, -122.0764, 0.75], // Mountain View
+            [37.3780, -122.0310, 0.6],  // Sunnyvale
+            [37.3297, -121.9026, 0.85], // San Jose
+            [37.8054, -122.2719, 0.5],  // Oakland
+            [37.5575, -121.9765, 0.4]   // Fremont
+        ];
+
+        layers.heatmap = L.heatLayer(heatData, {
+            radius: 35,
+            blur: 25,
+            maxZoom: 13,
+            gradient: {
+                0.0: '#00ff00',
+                0.3: '#ffff00',
+                0.6: '#ffa500',
+                1.0: '#ff0000'
+            }
+        }).addTo(map);
+        console.log('✅ Heat map added');
+
+        // Parking locations
+        const parkingLocations = [
+            { name: 'Marshall Square', coords: [37.4847, -122.2264], rate: 125, spaces: 450 },
+            { name: 'Downtown RWC', coords: [37.4863, -122.2325], rate: 125, spaces: 400 },
+            { name: 'High/Alma South', coords: [37.4430, -122.1610], rate: 275, spaces: 180 },
+            { name: 'Civic Center', coords: [37.4445, -122.1598], rate: 275, spaces: 140 },
+            { name: 'Downtown Menlo', coords: [37.4544, -122.1820], rate: 180, spaces: 220 },
+            { name: 'Menlo Center', coords: [37.4520, -122.1780], rate: 180, spaces: 200 },
+            { name: 'SoMa Garage 5th', coords: [37.7810, -122.4068], rate: 375, spaces: 350 },
+            { name: 'SoMa Hub', coords: [37.7765, -122.3970], rate: 375, spaces: 500 }
+        ];
+
+        parkingLocations.forEach(p => {
+            const color = p.rate <= 150 ? '#34c759' : p.rate <= 200 ? '#ff9500' : '#ff3b30';
+            L.circleMarker(p.coords, {
+                radius: 8,
+                fillColor: color,
+                color: 'white',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).bindPopup(`
+                <strong>${p.name}</strong><br>
+                Rate: $${p.rate}/month<br>
+                Spaces: ${p.spaces}
+            `).addTo(layers.parking);
+        });
+        console.log('✅ Parking markers added');
+
+        // Tech companies
+        const companies = [
+            { name: 'Box HQ', coords: [37.4863, -122.2325], employees: 2000 },
+            { name: 'EA', coords: [37.4880, -122.2350], employees: 3500 },
+            { name: 'Oracle', coords: [37.5303, -122.2656], employees: 5000 },
+            { name: 'VMware', coords: [37.4430, -122.1649], employees: 4000 },
+            { name: 'Tesla', coords: [37.3946, -122.1481], employees: 6000 },
+            { name: 'Palantir', coords: [37.4430, -122.1600], employees: 1500 },
+            { name: 'Meta HQ', coords: [37.4847, -122.1477], employees: 18000 },
+            { name: 'Meta Campus', coords: [37.4520, -122.1800], employees: 12000 },
+            { name: 'Google', coords: [37.4220, -122.0841], employees: 24000 },
+            { name: 'LinkedIn', coords: [37.4241, -122.0775], employees: 8000 },
+            { name: 'Apple Park', coords: [37.3349, -122.0090], employees: 25000 },
+            { name: 'Nvidia', coords: [37.3708, -121.9644], employees: 7000 }
+        ];
+
+        companies.forEach(c => {
+            L.circleMarker(c.coords, {
+                radius: 6,
+                fillColor: '#1d1d1f',
+                color: 'white',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).bindPopup(`
+                <strong>${c.name}</strong><br>
+                Employees: ${c.employees.toLocaleString()}
+            `).addTo(layers.companies);
+        });
+        console.log('✅ Company markers added');
+
+        // Toggle functionality
+        document.querySelectorAll('.toggle-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const layerName = item.dataset.layer;
+                const toggle = item.querySelector('.toggle-switch');
+                const isActive = toggle.classList.contains('active');
+
+                if (isActive) {
+                    toggle.classList.remove('active');
+                    if (layers[layerName]) {
+                        map.removeLayer(layers[layerName]);
+                        console.log(`❌ ${layerName} hidden`);
+                    }
+                } else {
+                    toggle.classList.add('active');
+                    if (layers[layerName]) {
+                        map.addLayer(layers[layerName]);
+                        console.log(`✅ ${layerName} shown`);
+                    }
+                }
+            });
+        });
+        console.log('✅ Toggles configured');
+
+        // Action button functions
+        function openCalculator() {
+            window.open('Odyssey_AI_Complete_Commute_Analysis.html', '_blank');
+        }
+
+        function openProfiler() {
+            window.open('Odyssey_AI_Employee_Profile_Analyzer.html', '_blank');
+        }
+
+        function exportData() {
+            const csv = [
+                ['Odyssey AI - Location Analysis Export'],
+                ['Generated: ' + new Date().toLocaleString()],
+                [''],
+                ['Target Locations'],
+                ['Location', 'Parking Rate/mo'],
+                ['Redwood City', '$125'],
+                ['Menlo Park', '$180'],
+                ['Palo Alto', '$275'],
+                [''],
+                ['Parking Locations'],
+                ['Name', 'Location', 'Rate/mo', 'Spaces']
+            ];
+
+            parkingLocations.forEach(p => {
+                csv.push([p.name, `${p.coords[0]}, ${p.coords[1]}`, `$${p.rate}`, p.spaces]);
+            });
+
+            csv.push(['']);
+            csv.push(['Tech Companies']);
+            csv.push(['Company', 'Employees']);
+
+            companies.forEach(c => {
+                csv.push([c.name, c.employees]);
+            });
+
+            csv.push(['']);
+            csv.push(['Transit Summary']);
+            csv.push(['Caltrain Stations', caltrainStations.length]);
+            csv.push(['BART Lines', '5']);
+            csv.push(['VTA Stations', vtaStations.length]);
+            csv.push(['Total AI Talent Pool', '95,000+']);
+
+            const csvContent = csv.map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'odyssey-map-data.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            console.log('✅ Data exported');
+        }
+
+        console.log('🎉 Map fully loaded!');
+    </script>
+</body>
+</html>
