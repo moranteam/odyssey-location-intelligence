@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Maps API Diagnostic</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 40px;
+            background: #f5f5f7;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+        }
+        h1 { color: #1d1d1f; margin-bottom: 20px; }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .loading { background: #fff3cd; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #d2d2d7;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        code {
+            background: #f5f5f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Google Maps API Diagnostic</h1>
+        
+        <div id="status1" class="status loading">
+            <strong>Step 1:</strong> Loading Google Maps JavaScript API...
+        </div>
+        
+        <div id="status2" class="status loading">
+            <strong>Step 2:</strong> Checking Places API...
+        </div>
+        
+        <div id="status3" class="status loading">
+            <strong>Step 3:</strong> Testing Autocomplete...
+        </div>
+        
+        <input type="text" 
+               id="address-input" 
+               placeholder="Type an address here to test..."
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false">
+        
+        <div id="console-log" style="margin-top: 20px; padding: 15px; background: #f5f5f7; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        const consoleLog = document.getElementById('console-log');
+        
+        function log(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = isError ? '#d32f2f' : '#1d1d1f';
+            consoleLog.innerHTML += `<div style="color: ${color}; margin-bottom: 5px;">[${timestamp}] ${message}</div>`;
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(id, message, type) {
+            const el = document.getElementById(id);
+            el.className = 'status ' + type;
+            el.innerHTML = '<strong>' + el.querySelector('strong').textContent + '</strong> ' + message;
+        }
+        
+        // Global error handler for API authentication failures
+        window.gm_authFailure = function() {
+            log('❌ API AUTHENTICATION FAILED', true);
+            updateStatus('status1', '❌ API key authentication failed', 'error');
+            updateStatus('status2', '⏸️ Skipped (auth failed)', 'error');
+            updateStatus('status3', '⏸️ Skipped (auth failed)', 'error');
+            
+            log('', false);
+            log('🔧 FIX REQUIRED IN GOOGLE CLOUD CONSOLE:', true);
+            log('1. Go to: https://console.cloud.google.com/apis/credentials', false);
+            log('2. Select project: Odyssey-Location-Map', false);
+            log('3. Click on your API key ending in ...TaPus', false);
+            log('4. Under "Application restrictions":', false);
+            log('   → Select "HTTP referrers (web sites)"', false);
+            log('   → Click "+ ADD AN ITEM"', false);
+            log('   → Add: https://moranteam.github.io/*', false);
+            log('   → Click "Done"', false);
+            log('5. Under "API restrictions":', false);
+            log('   → Select "Restrict key"', false);
+            log('   → Enable: Maps JavaScript API', false);
+            log('   → Enable: Places API', false);
+            log('   → Enable: Distance Matrix API', false);
+            log('6. Click SAVE at the bottom', false);
+            log('7. Wait 5 minutes for changes to propagate', false);
+            log('8. Refresh this page to test again', false);
+        };
+        
+        // Track if script loads
+        log('📡 Loading Google Maps API...');
+        
+        window.initAutocomplete = function() {
+            log('✅ Google Maps API loaded successfully!');
+            updateStatus('status1', '✅ Loaded successfully', 'success');
+            
+            // Check if Places API is available
+            if (typeof google.maps.places === 'undefined') {
+                log('❌ Places API not available', true);
+                updateStatus('status2', '❌ Places API not loaded', 'error');
+                updateStatus('status3', '⏸️ Cannot test without Places API', 'error');
+                return;
+            }
+            
+            log('✅ Places API available');
+            updateStatus('status2', '✅ Places API available', 'success');
+            
+            // Try to initialize autocomplete
+            const input = document.getElementById('address-input');
+            
+            try {
+                log('🔄 Initializing Places Autocomplete...');
+                
+                const autocomplete = new google.maps.places.Autocomplete(input, {
+                    bounds: new google.maps.LatLngBounds(
+                        new google.maps.LatLng(37.0, -122.5),
+                        new google.maps.LatLng(38.0, -121.5)
+                    ),
+                    componentRestrictions: { country: 'us' },
+                    fields: ['geometry', 'formatted_address']
+                });
+                
+                autocomplete.addListener('place_changed', function() {
+                    const place = autocomplete.getPlace();
+                    if (place.geometry) {
+                        log('✅ Address selected: ' + place.formatted_address);
+                        log('📍 Coordinates: ' + place.geometry.location.lat() + ', ' + place.geometry.location.lng());
+                    } else {
+                        log('⚠️ No geometry for selected place', true);
+                    }
+                });
+                
+                log('✅ Autocomplete initialized successfully!');
+                updateStatus('status3', '✅ Ready! Type an address above to test.', 'success');
+                
+            } catch (error) {
+                log('❌ Error initializing autocomplete: ' + error.message, true);
+                updateStatus('status3', '❌ ' + error.message, 'error');
+            }
+        };
+        
+        // Load Google Maps script
+        const script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyD1w0vlNjrD3_19U-CUWYQNiPcQBBTaPus&libraries=places&callback=initAutocomplete';
+        script.async = true;
+        script.onerror = function() {
+            log('❌ Failed to load Google Maps script from server', true);
+            updateStatus('status1', '❌ Script failed to load', 'error');
+            updateStatus('status2', '⏸️ Skipped', 'error');
+            updateStatus('status3', '⏸️ Skipped', 'error');
+        };
+        
+        document.head.appendChild(script);
+        log('📝 Script tag added to page');
+    </script>
+</body>
+</html>
