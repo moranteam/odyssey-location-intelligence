@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odyssey AI | Property Location Intelligence v4.0</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* MAP CONTAINER */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* CONTROL PANEL */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 420px;
+            max-height: calc(100vh - 40px);
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 16px 16px 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .panel-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .panel-header p {
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* COMMUTE SIMULATOR */
+        .commute-simulator {
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .location-dropdown {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            background: white;
+            border: 2px solid #d2d2d7;
+            border-radius: 10px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%23666' d='M0 0l6 8 6-8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+
+        .location-dropdown:hover {
+            border-color: #0071e3;
+        }
+
+        .location-dropdown:focus {
+            border-color: #0071e3;
+            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+        }
+
+        optgroup {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1d1d1f;
+        }
+
+        option {
+            padding: 8px;
+            font-weight: 500;
+        }
+
+        /* EXECUTIVE QUICK SELECT */
+        .executive-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .exec-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .exec-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .exec-btn:active {
+            transform: translateY(0);
+        }
+
+        /* CUSTOM ADDRESS INPUT */
+        .divider {
+            text-align: center;
+            margin: 16px 0;
+            color: #86868b;
+            font-size: 13px;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 35%;
+            height: 1px;
+            background: #d2d2d7;
+        }
+
+        .divider::before {
+            left: 0;
+        }
+
+        .divider::after {
+            right: 0;
+        }
+
+        .custom-address-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 15px;
+            background: white;
+            border: 2px solid #d2d2d7;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+        }
+
+        .custom-address-input:focus {
+            border-color: #0071e3;
+            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #0071e3 0%, #5856d6 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 113, 227, 0.4);
+        }
+
+        .calculate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* LOADING SPINNER */
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0071e3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* PROPERTY RESULTS */
+        .property-results {
+            display: none;
+            margin-top: 16px;
+        }
+
+        .results-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .property-card {
+            background: white;
+            border: 2px solid #e5e5e7;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .property-card:hover {
+            border-color: #0071e3;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .property-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .property-address {
+            font-size: 12px;
+            color: #86868b;
+            margin-bottom: 10px;
+        }
+
+        .commute-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f5f5f7;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .commute-time {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0071e3;
+        }
+
+        .commute-distance {
+            font-size: 13px;
+            color: #86868b;
+        }
+
+        .parking-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px;
+            background: #e8f5e9;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #2e7d32;
+        }
+
+        .parking-info.paid {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        /* TRANSIT INFO */
+        .transit-info {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid #bae6fd;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .transit-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0369a1;
+            margin-bottom: 12px;
+        }
+
+        .transit-option {
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .transit-option:last-child {
+            margin-bottom: 0;
+        }
+
+        .transit-route {
+            font-weight: 600;
+            color: #1d1d1f;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .transit-details {
+            font-size: 12px;
+            color: #86868b;
+        }
+
+        /* MAP LEGEND */
+        .legend-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .legend-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #1d1d1f;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #1d1d1f;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-marker {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .legend-marker.sm {
+            background: #0ea5e9;
+        }
+
+        .legend-marker.rwc {
+            background: #ef4444;
+        }
+
+        .legend-line {
+            width: 30px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-line.caltrain {
+            background: #dc2626;
+        }
+
+        .legend-line.bart {
+            background: #fbbf24;
+        }
+
+        /* MOBILE RESPONSIVE */
+        @media (max-width: 768px) {
+            .control-panel {
+                width: calc(100% - 32px);
+                max-height: calc(100vh - 180px);
+                top: auto;
+                bottom: 16px;
+                right: 16px;
+                left: 16px;
+            }
+
+            .executive-buttons {
+                flex-direction: column;
+            }
+
+            .exec-btn {
+                min-width: 100%;
+            }
+
+            .legend-container {
+                bottom: calc(100vh - 150px);
+                left: 16px;
+                right: 16px;
+                max-width: calc(100% - 32px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Legend -->
+            <div class="legend-container">
+                <div class="legend-title">🗺️ Map Legend</div>
+                <div class="legend-item">
+                    <div class="legend-marker sm"></div>
+                    <span>San Mateo Properties (4)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-marker rwc"></div>
+                    <span>Redwood City Properties (2)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line caltrain"></div>
+                    <span>Caltrain Line</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line bart"></div>
+                    <span>BART Line</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h1>Odyssey AI Location Intelligence</h1>
+                <p>Property Tour Commute Analysis</p>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-title">
+                    📍 Calculate Your Commute
+                </div>
+
+                <div class="commute-simulator">
+                    <!-- Executive Quick Select Buttons -->
+                    <div class="executive-buttons">
+                        <button class="exec-btn" onclick="selectExecutiveLocation('pacific-heights')">
+                            📍 Pacific Heights
+                        </button>
+                        <button class="exec-btn" onclick="selectExecutiveLocation('oakland')">
+                            📍 Oakland
+                        </button>
+                        <button class="exec-btn" onclick="selectExecutiveLocation('oliver')">
+                            📍 Oliver (SJ)
+                        </button>
+                    </div>
+
+                    <div class="divider">OR ENTER CUSTOM ADDRESS</div>
+
+                    <!-- Custom Address Input -->
+                    <input
+                        type="text"
+                        id="custom-address-input"
+                        class="custom-address-input"
+                        placeholder="Enter your home address..."
+                    />
+
+                    <button id="calculate-btn" class="calculate-btn" onclick="calculateCustomCommute()">
+                        🚗 Calculate My Commute Times
+                    </button>
+
+                    <!-- Loading Spinner -->
+                    <div id="loading-spinner" class="loading-spinner">
+                        <div class="spinner"></div>
+                        <div style="font-size: 13px; color: #86868b;">Calculating commute times...</div>
+                    </div>
+
+                    <!-- Property Results -->
+                    <div id="property-results" class="property-results"></div>
+                </div>
+
+                <div class="divider">OR SELECT FROM DROPDOWN</div>
+
+                <!-- City Dropdown -->
+                <select id="location-select" class="location-dropdown" onchange="updateCommuteFromDropdown()">
+                    <option value="">Select your home location...</option>
+                    
+                    <optgroup label="San Francisco">
+                        <option value="37.7749,-122.4194">Financial District</option>
+                        <option value="37.7833,-122.4167">SoMa</option>
+                        <option value="37.7955,-122.4373">Pacific Heights</option>
+                        <option value="37.7749,-122.4194">Nob Hill</option>
+                        <option value="37.7599,-122.4148">Mission District</option>
+                        <option value="37.7694,-122.4862">Richmond District</option>
+                    </optgroup>
+                    
+                    <optgroup label="East Bay">
+                        <option value="37.8044,-122.2712">Oakland (Downtown)</option>
+                        <option value="37.8715,-122.2730">Berkeley</option>
+                        <option value="37.9058,-122.0655">Walnut Creek</option>
+                        <option value="37.9271,-122.3462">Richmond</option>
+                        <option value="37.7652,-122.2416">Alameda</option>
+                    </optgroup>
+                    
+                    <optgroup label="Peninsula">
+                        <option value="37.6879,-122.4702">Daly City</option>
+                        <option value="37.6688,-122.4678">South San Francisco</option>
+                        <option value="37.6546,-122.4077">San Bruno</option>
+                        <option value="37.5871,-122.3957">Millbrae</option>
+                        <option value="37.5585,-122.2711">Foster City</option>
+                    </optgroup>
+                    
+                    <optgroup label="South Bay">
+                        <option value="37.3382,-121.8863">San Jose (Downtown)</option>
+                        <option value="37.3688,-122.0363">Sunnyvale</option>
+                        <option value="37.4029,-121.9512">Milpitas</option>
+                        <option value="37.3541,-121.9552">Santa Clara</option>
+                        <option value="37.3874,-122.0819">Mountain View</option>
+                        <option value="37.4419,-122.1430">Palo Alto</option>
+                        <option value="37.4852,-122.2364">Redwood City</option>
+                        <option value="37.4538,-122.1817">Menlo Park</option>
+                    </optgroup>
+                </select>
+
+                <div id="dropdown-results" style="margin-top: 16px; display: none;">
+                    <!-- Dropdown results will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // === CONFIGURATION ===
+        const GOOGLE_MAPS_API_KEY = 'AIzaSyD1w0vlNjrD3_19U-CUWYQNiPcQBBTaPus';
+        
+        // 6 Target Properties
+        const PROPERTIES = [
+            {
+                id: 1,
+                name: '201 Baldwin',
+                address: '201 Baldwin Ave, San Mateo, CA 94401',
+                lat: 37.5636,
+                lng: -122.3228,
+                city: 'San Mateo',
+                parking: 'Dedicated parking lot',
+                markerColor: '#0ea5e9'
+            },
+            {
+                id: 2,
+                name: '2 E 3rd Ave',
+                address: '2 E 3rd Ave, San Mateo, CA 94401',
+                lat: 37.5636,
+                lng: -122.3248,
+                city: 'San Mateo',
+                parking: '',
+                markerColor: '#0ea5e9'
+            },
+            {
+                id: 3,
+                name: '2317 Broadway',
+                address: '2317 Broadway, Redwood City, CA 94063',
+                lat: 37.4863,
+                lng: -122.2325,
+                city: 'Redwood City',
+                parking: 'Public parking, $60/mo per employee',
+                markerColor: '#ef4444',
+                isPaid: true
+            },
+            {
+                id: 4,
+                name: '900 Veterans',
+                address: '900 Veterans Blvd, Redwood City, CA 94063',
+                lat: 37.4920,
+                lng: -122.2280,
+                city: 'Redwood City',
+                parking: 'Bay Area Bank Building - Dedicated parking',
+                markerColor: '#ef4444'
+            },
+            {
+                id: 5,
+                name: '181 2nd Ave',
+                address: '181 2nd Ave, San Mateo, CA 94401',
+                lat: 37.5645,
+                lng: -122.3235,
+                city: 'San Mateo',
+                parking: 'San Mateo Business Center - Dedicated parking',
+                markerColor: '#0ea5e9'
+            },
+            {
+                id: 6,
+                name: '1 Franklin',
+                address: '1 Franklin Parkway, San Mateo, CA 94403',
+                lat: 37.5500,
+                lng: -122.3000,
+                city: 'San Mateo',
+                parking: '910 Park - Dedicated parking',
+                markerColor: '#0ea5e9'
+            }
+        ];
+
+        // Executive Preset Addresses
+        const EXECUTIVE_ADDRESSES = {
+            'pacific-heights': '2200 Pacific Ave, San Francisco, CA 94115',
+            'oakland': '1 Frank H Ogawa Plaza, Oakland, CA 94612',
+            'oliver': '2365 Homewood Drive, San Jose, CA 95128'
+        };
+
+        // === MAP INITIALIZATION ===
+        let map;
+        let autocomplete;
+        let propertyMarkers = [];
+
+        function initializeMap() {
+            // Center map between San Mateo and Redwood City
+            map = L.map('map').setView([37.52, -122.27], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add property markers
+            PROPERTIES.forEach(property => {
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="
+                        background: ${property.markerColor};
+                        width: 32px;
+                        height: 32px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-weight: 700;
+                        font-size: 14px;
+                    ">${property.id}</div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                const marker = L.marker([property.lat, property.lng], { icon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <div style="font-size: 13px;">
+                            <strong>${property.name}</strong><br>
+                            <span style="color: #666; font-size: 11px;">${property.address}</span><br>
+                            ${property.parking ? `<span style="color: #2e7d32; font-size: 11px;">🅿️ ${property.parking}</span>` : ''}
+                        </div>
+                    `);
+
+                propertyMarkers.push(marker);
+            });
+
+            // Add Caltrain line (simplified)
+            const caltrainStops = [
+                [37.7765, -122.3942], // SF
+                [37.5939, -122.3909], // Millbrae
+                [37.5630, -122.3255], // San Mateo
+                [37.4852, -122.2316], // Redwood City
+                [37.4439, -122.1633]  // Palo Alto
+            ];
+
+            L.polyline(caltrainStops, {
+                color: '#dc2626',
+                weight: 3,
+                opacity: 0.7
+            }).addTo(map);
+
+            console.log('✅ Map initialized with 6 properties');
+        }
+
+        // === GOOGLE MAPS API INITIALIZATION ===
+        let googleMapsLoaded = false;
+
+        function loadGoogleMapsAPI() {
+            if (googleMapsLoaded) {
+                initializeAutocomplete();
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve, reject) => {
+                window.initGoogleMaps = () => {
+                    googleMapsLoaded = true;
+                    console.log('✅ Google Maps API loaded');
+                    initializeAutocomplete();
+                    resolve();
+                };
+
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+                script.async = true;
+                script.defer = true;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        function initializeAutocomplete() {
+            const input = document.getElementById('custom-address-input');
+            
+            autocomplete = new google.maps.places.Autocomplete(input, {
+                bounds: new google.maps.LatLngBounds(
+                    new google.maps.LatLng(36.8, -123.0),
+                    new google.maps.LatLng(38.5, -121.5)
+                ),
+                componentRestrictions: { country: 'us' },
+                fields: ['formatted_address', 'geometry']
+            });
+
+            console.log('✅ Autocomplete initialized');
+        }
+
+        // === EXECUTIVE QUICK SELECT ===
+        function selectExecutiveLocation(exec) {
+            const address = EXECUTIVE_ADDRESSES[exec];
+            document.getElementById('custom-address-input').value = address;
+            calculateCustomCommute();
+        }
+
+        // === CUSTOM ADDRESS COMMUTE CALCULATION ===
+        async function calculateCustomCommute() {
+            const input = document.getElementById('custom-address-input');
+            const address = input.value.trim();
+
+            if (!address) {
+                alert('Please enter an address');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading-spinner').style.display = 'block';
+            document.getElementById('property-results').style.display = 'none';
+            document.getElementById('calculate-btn').disabled = true;
+
+            try {
+                // Load Google Maps API if not loaded
+                if (!googleMapsLoaded) {
+                    await loadGoogleMapsAPI();
+                }
+
+                // Initialize Distance Matrix service
+                const service = new google.maps.DistanceMatrixService();
+
+                // Calculate distances to all 6 properties
+                const destinations = PROPERTIES.map(p => p.address);
+
+                service.getDistanceMatrix(
+                    {
+                        origins: [address],
+                        destinations: destinations,
+                        travelMode: 'DRIVING',
+                        unitSystem: google.maps.UnitSystem.IMPERIAL,
+                        drivingOptions: {
+                            departureTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow 8 AM
+                            trafficModel: 'bestguess'
+                        }
+                    },
+                    (response, status) => {
+                        if (status === 'OK') {
+                            displayPropertyResults(address, response);
+                        } else {
+                            console.error('Distance Matrix failed:', status);
+                            alert('Failed to calculate commute times. Please try again.');
+                        }
+                        
+                        document.getElementById('loading-spinner').style.display = 'none';
+                        document.getElementById('calculate-btn').disabled = false;
+                    }
+                );
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                document.getElementById('loading-spinner').style.display = 'none';
+                document.getElementById('calculate-btn').disabled = false;
+            }
+        }
+
+        function displayPropertyResults(fromAddress, response) {
+            const resultsContainer = document.getElementById('property-results');
+            
+            if (response.rows[0].elements.every(el => el.status === 'ZERO_RESULTS')) {
+                resultsContainer.innerHTML = '<div style="color: #d32f2f; font-size: 13px; padding: 12px;">Unable to calculate routes from this address.</div>';
+                resultsContainer.style.display = 'block';
+                return;
+            }
+
+            let html = `
+                <div class="results-header">FROM: 📍 ${fromAddress}</div>
+            `;
+
+            response.rows[0].elements.forEach((element, index) => {
+                if (element.status === 'OK') {
+                    const property = PROPERTIES[index];
+                    const duration = element.duration_in_traffic || element.duration;
+                    const distance = element.distance;
+
+                    html += `
+                        <div class="property-card">
+                            <div class="property-name">
+                                <span style="color: ${property.markerColor};">●</span>
+                                ${property.name}
+                            </div>
+                            <div class="property-address">${property.address}</div>
+                            <div class="commute-info">
+                                <div>
+                                    <div class="commute-time">🚗 ${duration.text}</div>
+                                    <div class="commute-distance">${distance.text}</div>
+                                </div>
+                            </div>
+                            ${property.parking ? `
+                                <div class="parking-info ${property.isPaid ? 'paid' : ''}">
+                                    🅿️ ${property.parking}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            });
+
+            // Add transit recommendation
+            html += `
+                <div class="transit-info">
+                    <div class="transit-title">🚆 Recommended Transit Routes</div>
+                    <div class="transit-option">
+                        <div class="transit-route">Caltrain Express</div>
+                        <div class="transit-details">SF → San Mateo (22 min) → Redwood City (10 min)</div>
+                    </div>
+                    <div class="transit-option">
+                        <div class="transit-route">BART → Caltrain</div>
+                        <div class="transit-details">East Bay → Millbrae → Caltrain South</div>
+                    </div>
+                </div>
+            `;
+
+            resultsContainer.innerHTML = html;
+            resultsContainer.style.display = 'block';
+
+            console.log('✅ Results displayed for all 6 properties');
+        }
+
+        // === DROPDOWN COMMUTE (Simplified) ===
+        function updateCommuteFromDropdown() {
+            const select = document.getElementById('location-select');
+            const coords = select.value.split(',');
+            
+            if (coords.length !== 2) {
+                document.getElementById('dropdown-results').style.display = 'none';
+                return;
+            }
+
+            const cityName = select.options[select.selectedIndex].text;
+            const [lat, lng] = coords.map(parseFloat);
+
+            // Simple distance calculation (not driving distance)
+            const results = PROPERTIES.map(property => {
+                const distance = calculateDistance(lat, lng, property.lat, property.lng);
+                const estimatedTime = Math.round(distance * 1.2); // ~1.2 min per mile estimate
+                
+                return {
+                    property,
+                    distance: distance.toFixed(1),
+                    time: estimatedTime
+                };
+            }).sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+
+            let html = `
+                <div class="results-header">FROM: 📍 ${cityName}</div>
+            `;
+
+            results.forEach(result => {
+                html += `
+                    <div class="property-card">
+                        <div class="property-name">
+                            <span style="color: ${result.property.markerColor};">●</span>
+                            ${result.property.name}
+                        </div>
+                        <div class="property-address">${result.property.address}</div>
+                        <div class="commute-info">
+                            <div>
+                                <div class="commute-time">~${result.time} min</div>
+                                <div class="commute-distance">${result.distance} mi (est.)</div>
+                            </div>
+                        </div>
+                        ${result.property.parking ? `
+                            <div class="parking-info ${result.property.isPaid ? 'paid' : ''}">
+                                🅿️ ${result.property.parking}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            document.getElementById('dropdown-results').innerHTML = html;
+            document.getElementById('dropdown-results').style.display = 'block';
+        }
+
+        // Haversine distance formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 3959; // Earth radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // === INITIALIZE ON LOAD ===
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeMap();
+            loadGoogleMapsAPI();
+            console.log('✅ Dashboard v4.0 initialized with 6 properties');
+        });
+    </script>
+</body>
+</html>
